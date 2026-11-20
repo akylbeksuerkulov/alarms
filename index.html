@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Будильник</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="alarm-card">
+        <div id="clock" class="clock">00:00:00</div>
+        
+        <div class="controls">
+            <input type="time" id="alarmTime">
+            <button id="toggleBtn" onclick="toggleAlarm()">Установить</button>
+        </div>
+        
+        <p id="status" class="status">Будильник выключен</p>
+    </div>
+
+    <script>
+        let alarmTime = null;
+        let isRinging = false;
+        let ringInterval = null;
+        let audioCtx = null;
+
+        // Генерация звукового сигнала без внешних MP3-файлов
+        function playBeep() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Нота Ля (880 Гц)
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // Обновление часов каждую секунду
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+
+            // Проверка совпадения времени
+            if (alarmTime === `${hours}:${minutes}` && seconds === '00' && !isRinging) {
+                startRinging();
+            }
+        }
+
+        function toggleAlarm() {
+            const timeInput = document.getElementById('alarmTime');
+            const btn = document.getElementById('toggleBtn');
+            const status = document.getElementById('status');
+
+            // Если будильник уже звонит или установлен — сбрасываем
+            if (isRinging || alarmTime) {
+                stopAlarm();
+                return;
+            }
+
+            if (!timeInput.value) {
+                status.textContent = 'Сначала выберите время!';
+                return;
+            }
+
+            // Инициализируем AudioContext по клику (требование браузеров)
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            alarmTime = timeInput.value;
+            timeInput.disabled = true;
+            btn.textContent = 'Отключить';
+            btn.classList.add('active');
+            status.textContent = `Заведён на ${alarmTime}`;
+        }
+
+        function startRinging() {
+            isRinging = true;
+            document.querySelector('.alarm-card').classList.add('ringing');
+            document.getElementById('status').textContent = 'ПОРА ВСТАВАТЬ!';
+            document.getElementById('toggleBtn').textContent = 'Остановить';
+            
+            playBeep();
+            ringInterval = setInterval(playBeep, 800);
+        }
+
+        function stopAlarm() {
+            isRinging = false;
+            alarmTime = null;
+            clearInterval(ringInterval);
+            
+            const timeInput = document.getElementById('alarmTime');
+            const btn = document.getElementById('toggleBtn');
+            
+            timeInput.disabled = false;
+            btn.textContent = 'Установить';
+            btn.classList.remove('active');
+            document.querySelector('.alarm-card').classList.remove('ringing');
+            document.getElementById('status').textContent = 'Будильник выключен';
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>
